@@ -146,23 +146,20 @@ function getRealPath(p: string): string | null {
 /**
  * Check if a path matches any blocked pattern
  */
-function matchesBlockedPattern(
+/** @internal Exported for testing */
+export function matchesBlockedPattern(
   realPath: string,
   blockedPatterns: string[],
 ): string | null {
   const pathParts = realPath.split(path.sep);
 
   for (const pattern of blockedPatterns) {
-    // Check if any path component matches the pattern
     for (const part of pathParts) {
-      if (part === pattern || part.includes(pattern)) {
+      // Exact match (e.g. ".env", ".ssh", "credentials")
+      // or dotfile variant (e.g. ".env.local", ".env.production")
+      if (part === pattern || part.startsWith(pattern + '.')) {
         return pattern;
       }
-    }
-
-    // Also check if the full path contains the pattern
-    if (realPath.includes(pattern)) {
-      return pattern;
     }
   }
 
