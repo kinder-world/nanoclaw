@@ -14,9 +14,30 @@ import {
   DATA_DIR,
   GROUPS_DIR,
 } from './config.js';
-import { logger } from './logger.js';
+import { logger, securityLogger } from './logger.js';
 import { validateAdditionalMounts } from './mount-security.js';
 import { RegisteredGroup } from './types.js';
+
+const LOG_RETENTION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+/**
+ * Rotate old log files and set restrictive permissions (FINDING-13)
+ */
+function rotateAndSecureLogs(logsDir: string): void {
+  try {
+    const now = Date.now();
+    for (const file of fs.readdirSync(logsDir)) {
+      const filePath = path.join(logsDir, file);
+      const stat = fs.statSync(filePath);
+      // Set restrictive permissions on all log files
+      fs.chmodSync(filePath, 0o600);
+      // Delete logs older than retention period
+      if (now - stat.mtimeMs > LOG_RETENTION_MS) {
+        fs.unlinkSync(filePath);
+      }
+    }
+  } catch { /* best effort */ }
+}
 
 // Sentinel markers for robust output parsing (must match agent-runner)
 const OUTPUT_START_MARKER = '---NANOCLAW_OUTPUT_START---';
@@ -256,18 +277,23 @@ export async function runContainerAgent(
     'Container mount configuration',
   );
 
-  logger.info(
+  securityLogger.info(
     {
+      event: 'container_spawn',
       group: group.name,
       containerName,
-      mountCount: mounts.length,
       isMain: input.isMain,
+      mounts: mounts.map(m => ({
+        container: m.containerPath,
+        readonly: m.readonly,
+      })),
     },
     'Spawning container agent',
   );
 
   const logsDir = path.join(GROUPS_DIR, group.folder, 'logs');
-  fs.mkdirSync(logsDir, { recursive: true });
+  fs.mkdirSync(logsDir, { recursive: true, mode: 0o700 });
+  rotateAndSecureLogs(logsDir);
 
   return new Promise((resolve) => {
     const container = spawn('container', containerArgs, {
@@ -410,7 +436,7 @@ export async function runContainerAgent(
           `Container: ${containerName}`,
           `Duration: ${duration}ms`,
           `Exit Code: ${code}`,
-        ].join('\n'));
+        ].join('\n'), { mode: 0o600 });
 
         logger.error(
           { group: group.name, containerName, duration, code },
@@ -479,7 +505,7 @@ export async function runContainerAgent(
         );
       }
 
-      fs.writeFileSync(logFile, logLines.join('\n'));
+      fs.writeFileSync(logFile, logLines.join('\n'), { mode: 0o600 });
       logger.debug({ logFile, verbose: isVerbose }, 'Container log written');
 
       if (code !== 0) {

@@ -5,6 +5,10 @@ export const logger = pino({
   transport: { target: 'pino-pretty', options: { colorize: true } },
 });
 
+// Structured security event logger (FINDING-11)
+// All security-relevant events go through this child logger for easy filtering
+export const securityLogger = logger.child({ component: 'security' });
+
 // Route uncaught errors through pino so they get timestamps in stderr
 process.on('uncaughtException', (err) => {
   logger.fatal({ err }, 'Uncaught exception');

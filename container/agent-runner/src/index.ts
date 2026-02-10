@@ -381,7 +381,9 @@ async function runQuery(
         ? { type: 'preset' as const, preset: 'claude_code' as const, append: globalClaudeMd }
         : undefined,
       allowedTools: [
-        'Bash',
+        // Non-main agents cannot use Bash — prevents credential exfiltration
+        // and arbitrary code execution from prompt-injected agents (FINDING-01)
+        ...(containerInput.isMain ? ['Bash'] : []),
         'Read', 'Write', 'Edit', 'Glob', 'Grep',
         'WebSearch', 'WebFetch',
         'Task', 'TaskOutput', 'TaskStop',
