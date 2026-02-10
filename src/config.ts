@@ -49,6 +49,9 @@ export const TRIGGER_PATTERN = new RegExp(
   'i',
 );
 
+// Maximum message content length stored in database (FINDING-07)
+export const MAX_MESSAGE_LENGTH = 10_000;
+
 // Timezone for scheduled tasks (cron expressions, etc.)
 // Uses system timezone by default
 export const TIMEZONE =

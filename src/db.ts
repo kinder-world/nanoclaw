@@ -4,7 +4,7 @@ import path from 'path';
 
 import { proto } from '@whiskeysockets/baileys';
 
-import { DATA_DIR, STORE_DIR } from './config.js';
+import { DATA_DIR, MAX_MESSAGE_LENGTH, STORE_DIR } from './config.js';
 import { NewMessage, RegisteredGroup, ScheduledTask, TaskRunLog } from './types.js';
 
 let db: Database.Database;
@@ -211,12 +211,13 @@ export function storeMessage(
 ): void {
   if (!msg.key) return;
 
-  const content =
+  const rawContent =
     msg.message?.conversation ||
     msg.message?.extendedTextMessage?.text ||
     msg.message?.imageMessage?.caption ||
     msg.message?.videoMessage?.caption ||
     '';
+  const content = rawContent.slice(0, MAX_MESSAGE_LENGTH);
 
   const timestamp = new Date(Number(msg.messageTimestamp) * 1000).toISOString();
   const sender = msg.key.participant || msg.key.remoteJid || '';

@@ -761,7 +761,14 @@ async function processTaskIpc(
 
 async function connectWhatsApp(): Promise<void> {
   const authDir = path.join(STORE_DIR, 'auth');
-  fs.mkdirSync(authDir, { recursive: true });
+  fs.mkdirSync(authDir, { recursive: true, mode: 0o700 });
+
+  // Harden permissions on existing auth files (FINDING-06)
+  try {
+    for (const file of fs.readdirSync(authDir)) {
+      fs.chmodSync(path.join(authDir, file), 0o600);
+    }
+  } catch { /* best effort */ }
 
   const { state, saveCreds } = await useMultiFileAuthState(authDir);
 
