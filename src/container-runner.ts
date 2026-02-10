@@ -2,7 +2,7 @@
  * Container Runner for NanoClaw
  * Spawns agent execution in Apple Container and handles IPC
  */
-import { ChildProcess, exec, spawn } from 'child_process';
+import { ChildProcess, spawn } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -367,11 +367,22 @@ export async function runContainerAgent(
     const killOnTimeout = () => {
       timedOut = true;
       logger.error({ group: group.name, containerName }, 'Container timeout, stopping gracefully');
-      exec(`container stop ${containerName}`, { timeout: 15000 }, (err) => {
-        if (err) {
-          logger.warn({ group: group.name, containerName, err }, 'Graceful stop failed, force killing');
+      const stop = spawn('container', ['stop', containerName], { stdio: 'pipe' });
+      const stopTimeout = setTimeout(() => {
+        logger.warn({ group: group.name, containerName }, 'Graceful stop failed, force killing');
+        stop.kill();
+        container.kill('SIGKILL');
+      }, 15000);
+      stop.on('close', (stopCode) => {
+        clearTimeout(stopTimeout);
+        if (stopCode !== 0) {
+          logger.warn({ group: group.name, containerName, stopCode }, 'Graceful stop failed, force killing');
           container.kill('SIGKILL');
         }
+      });
+      stop.on('error', () => {
+        clearTimeout(stopTimeout);
+        container.kill('SIGKILL');
       });
     };
 

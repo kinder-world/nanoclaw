@@ -1,4 +1,5 @@
-import { exec, execSync } from 'child_process';
+import { execSync, spawn, spawnSync } from 'child_process';
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
@@ -626,7 +627,7 @@ async function processTaskIpc(
           nextRun = scheduled.toISOString();
         }
 
-        const taskId = `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const taskId = `task-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
         const contextMode =
           data.context_mode === 'group' || data.context_mode === 'isolated'
             ? data.context_mode
@@ -781,9 +782,7 @@ async function connectWhatsApp(): Promise<void> {
       const msg =
         'WhatsApp authentication required. Run /setup in Claude Code.';
       logger.error(msg);
-      exec(
-        `osascript -e 'display notification "${msg}" with title "NanoClaw" sound name "Basso"'`,
-      );
+      spawn('osascript', ['-e', `display notification "${msg}" with title "NanoClaw" sound name "Basso"`]);
       setTimeout(() => process.exit(1), 1000);
     }
 
@@ -1039,7 +1038,7 @@ function ensureContainerSystemRunning(): void {
       .map((c) => c.configuration.id);
     for (const name of orphans) {
       try {
-        execSync(`container stop ${name}`, { stdio: 'pipe' });
+        spawnSync('container', ['stop', name], { stdio: 'pipe' });
       } catch { /* already stopped */ }
     }
     if (orphans.length > 0) {
