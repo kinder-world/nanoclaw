@@ -63,11 +63,13 @@ function buildVolumeMounts(
   const projectRoot = process.cwd();
 
   if (isMain) {
-    // Main gets the entire project root mounted
+    // Main gets the entire project root — read-only by default (FINDING-04)
+    // Opt-in to read-write via containerConfig.projectReadWrite
+    const projectRW = group.containerConfig?.projectReadWrite === true;
     mounts.push({
       hostPath: projectRoot,
       containerPath: '/workspace/project',
-      readonly: false,
+      readonly: !projectRW,
     });
 
     // Main also gets its group folder as the working directory

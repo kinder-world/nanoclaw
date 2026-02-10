@@ -30,6 +30,7 @@ export interface AllowedRoot {
 export interface ContainerConfig {
   additionalMounts?: AdditionalMount[];
   timeout?: number; // Default: 300000 (5 minutes)
+  projectReadWrite?: boolean; // Default: false — main group project root is read-only unless opted in
 }
 
 export interface RegisteredGroup {
